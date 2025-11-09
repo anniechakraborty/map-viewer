@@ -1,1 +1,16 @@
-<div id="map"></div>
+<!-- <div id="map"></div> -->
+ <div class="map-container">
+  <!-- View switcher buttons -->
+  <div class="map-controls">
+    <button
+      *ngFor="let styleName of (mapStyles | keyvalue)"
+      (click)="changeView(styleName.key)"
+      [class.active]="styleName.key === currentStyleName"
+    >
+      {{ styleName.key }}
+    </button>
+  </div>
+
+  <!-- The map itself -->
+  <div id="map"></div>
+</div>
