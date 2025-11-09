@@ -1,0 +1,30 @@
+<h2 mat-dialog-title style="text-align: center;">Pin Up!</h2>
+
+<div mat-dialog-content class="pindialog">
+  <p><strong>Coordinates:</strong> {{ data.lat.toFixed(4) }}, {{ data.lng.toFixed(4) }}</p>
+
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>Category</mat-label>
+    <mat-select [(ngModel)]="category">
+      <mat-option *ngFor="let option of categories" [value]="option">
+        {{ option }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>Comment</mat-label>
+    <textarea matInput rows="3" [(ngModel)]="comment"></textarea>
+  </mat-form-field>
+  <br>
+  <label class="font-medium mb-1 block">Visited status:</label>
+  <mat-radio-group [(ngModel)]="visited">
+    <mat-radio-button value="true">Yes</mat-radio-button>
+    <mat-radio-button value="false">No</mat-radio-button>
+  </mat-radio-group>
+</div>
+
+<div mat-dialog-actions align="center">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-flat-button color="primary" (click)="onSave()">Save</button>
+</div>

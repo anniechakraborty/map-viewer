@@ -1,6 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import * as maplib from 'maplibre-gl';
 import { NgFor, KeyValuePipe } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
+import { PinDialogComponent } from '../pin-dialog/pin-dialog.component';
 import { PinService } from '../services/pin.service';
 import { Pin } from '../models/pin.model';
 
@@ -27,9 +29,7 @@ export class MapComponent implements OnInit, OnDestroy {
     Toner: [
       'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
     ],
-    Terrain: [
-      'https://tile.opentopomap.org/{z}/{x}/{y}.png',
-    ],
+    Terrain: ['https://tile.opentopomap.org/{z}/{x}/{y}.png'],
     Watercolor: [
       'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
     ],
@@ -37,51 +37,30 @@ export class MapComponent implements OnInit, OnDestroy {
 
   currentStyleName = 'Standard';
 
-  constructor(private pinService: PinService) {}
+  constructor(private pinService: PinService, private dialog: MatDialog) {}
 
   ngOnInit(): void {
     this.initializeMap(this.mapStyles[this.currentStyleName]);
-
-    // Initializing the map with the center in Stuttgart
-    // this.map = new maplib.Map({
-    //   container: 'map',
-    //   style: {
-    //     version: 8,
-    //     sources: {
-    //       osm: {
-    //         type: 'raster',
-    //         tiles: [
-    //           'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    //           'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    //           'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    //         ],
-    //         tileSize: 256,
-    //         attribution:
-    //           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    //       },
-    //     },
-    //     layers: [
-    //       {
-    //         id: 'osm',
-    //         type: 'raster',
-    //         source: 'osm',
-    //         minzoom: 0,
-    //         maxzoom: 19,
-    //       },
-    //     ],
-    //   },
-    //   center: [9.1829, 48.7758],
-    //   zoom: 12,
-    // });
-
-    // this.map.addControl(new maplib.NavigationControl(), 'top-right');
+    this.map.on('click', (event) => {
+      const clickedElement = event.originalEvent.target as HTMLElement;
+      // checking if element is an exisitng marker or the map
+      if (
+        clickedElement.closest('.maplibregl-marker') ||
+        clickedElement.closest('.maplibregl-popup')
+      ) {
+        return;
+      }
+      const lngLat = event.lngLat;
+      this.openAddPinDialog(lngLat.lng, lngLat.lat);
+    });
+    this.pinService.getPins().forEach((pin) => this.addMarker(pin));
   }
 
   private initializeMap(tiles: string[]): void {
     this.map = new maplib.Map({
       container: 'map',
       style: this.createStyle(tiles),
-      center: [9.1829, 48.7758],
+      center: [9.1829, 48.7758], // Stuttgart coordinates
       zoom: 12,
     });
 
@@ -90,7 +69,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   private createStyle(tiles: string[]): maplib.StyleSpecification {
     return {
-      version: 8 as 8, // <-- this is key (literal type, not just a number)
+      version: 8 as 8,
       sources: {
         osm: {
           type: 'raster',
@@ -109,7 +88,7 @@ export class MapComponent implements OnInit, OnDestroy {
           maxzoom: 19,
         },
       ],
-    } as maplib.StyleSpecification; // <-- tell TypeScript explicitly
+    } as maplib.StyleSpecification;
   }
 
   changeView(styleName: string): void {
@@ -119,6 +98,46 @@ export class MapComponent implements OnInit, OnDestroy {
     // Change the style dynamically
     const newStyle = this.createStyle(this.mapStyles[styleName]);
     this.map.setStyle(newStyle);
+  }
+
+  private openAddPinDialog(lng: number, lat: number): void {
+    const dialogRef = this.dialog.open(PinDialogComponent, {
+      width: '400px',
+      height: 'auto',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      panelClass: 'pindialog',
+      data: { lng, lat },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        const pin: Pin = {
+          lng: result.lng,
+          lat: result.lat,
+          comment: result.comment,
+          category: result.category,
+          visited: result.visited,
+        };
+        this.pinService.addPin(pin);
+        this.addMarker(pin);
+      }
+    });
+  }
+
+  private addMarker(pin: Pin): void {
+    const popup = new maplib.Popup({ offset: 25 }).setHTML(`
+      <div style='padding: 7px;'>
+        <strong>${pin.category}</strong><br>
+        ${pin.comment}<br>
+        Visited? <strong>${pin.visited ? 'Yes' : 'Not yet'}</strong>
+      </div>
+      `);
+
+    new maplib.Marker({ color: '#FF5733' })
+      .setLngLat([pin.lng, pin.lat])
+      .setPopup(popup)
+      .addTo(this.map);
   }
 
   ngOnDestroy(): void {
